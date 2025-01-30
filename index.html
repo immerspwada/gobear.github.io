@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบรายงาน</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -291,6 +292,121 @@
                 padding: 0.75rem;
             }
         }
+
+        .bank-details-section {
+            margin-top: 2rem;
+        }
+
+        .bank-details-form {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .bank-details-form input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .bank-details-form button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .bank-details-form button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .bank-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .bank-details-table th, .bank-details-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .bank-details-table th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .bank-details-table tr:hover {
+            background-color: #f5f6fa;
+        }
+
+        .bank-details-table .action-btn {
+            margin-left: 0.5rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .bank-details-table .edit-btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+        }
+
+        .bank-details-table .edit-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .bank-details-table .delete-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+        }
+
+        .bank-details-table .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .bank-details-table .copy-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+        }
+
+        .bank-details-table .copy-btn:hover {
+            background-color: #219a52;
+        }
+
+        .hidden-row-content {
+            display: none;
+        }
+
+        .show-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .show-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .no-data-message {
+            text-align: center;
+            color: var(--error-color);
+            font-size: 1.2rem;
+            margin-top: 2rem;
+        }
     </style>
 </head>
 <body>
@@ -306,6 +422,7 @@
             <div class="tab active" onclick="showTab('merchant')">คำนวนจ่ายร้านค้า</div>
             <div class="tab" onclick="showTab('rider')">รายงานไรเดอร์</div>
             <div class="tab" onclick="showTab('history')">ประวัติการรายงาน</div>
+            <div class="tab" onclick="showTab('bankDetails')">จัดการข้อมูลธนาคาร</div>
         </div>
 
         <div id="merchant" class="tab-content active">
@@ -319,6 +436,7 @@
                 </div>
             </div>
 
+            <div id="noDataMessage" class="no-data-message" style="display: none;">ไม่มีข้อมูลที่ตรงกัน</div>
             <table id="outputTable" class="table table-striped">
                 <thead>
                     <tr>
@@ -372,6 +490,31 @@
                 <!-- History items will be appended here -->
             </div>
         </div>
+
+        <div id="bankDetails" class="tab-content">
+            <div class="bank-details-section">
+                <h2>จัดการข้อมูลธนาคาร</h2>
+                <div class="bank-details-form">
+                    <input type="text" id="bankMerchantName" placeholder="ชื่อร้านค้า">
+                    <input type="text" id="bankAccountName" placeholder="ชื่อบัญชี">
+                    <input type="text" id="bankName" placeholder="ธนาคาร">
+                    <input type="text" id="bankAccountNumber" placeholder="เลขบัญชี">
+                    <button onclick="addBankDetails()">เพิ่มข้อมูล</button>
+                </div>
+                <table class="bank-details-table">
+                    <thead>
+                        <tr>
+                            <th>ร้านค้า</th>
+                            <th>ชื่อบัญชี</th>
+                            <th>ธนาคาร</th>
+                            <th>เลขบัญชี</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bankDetailsList"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
@@ -409,6 +552,10 @@
             document.querySelector('.process-btn').disabled = !e.target.files.length;
         });
 
+        async function fetchBankDetails(merchantName) {
+            return bankDetails[merchantName] || null;
+        }
+
         async function processFile() {
             const file = document.getElementById('fileInput').files[0];
             if (!file) return;
@@ -417,10 +564,21 @@
             try {
                 loadingOverlay.style.display = 'flex';
                 resultArray = await processCSV(file);
-                updateTable();
-                document.querySelector('.export-btn').style.display = 'block';
-                showNotification('ประมวลผลข้อมูลสำเร็จ', 'success');
-                saveHistory('merchant', resultArray);
+                for (let row of resultArray) {
+                    const bankDetails = await fetchBankDetails(row.Merchant);
+                    if (bankDetails) {
+                        row.bankDetails = bankDetails;
+                    }
+                }
+                if (resultArray.length === 0) {
+                    document.getElementById('noDataMessage').style.display = 'block';
+                } else {
+                    document.getElementById('noDataMessage').style.display = 'none';
+                    updateTable();
+                    document.querySelector('.export-btn').style.display = 'block';
+                    showNotification('ประมวลผลข้อมูลสำเร็จ', 'success');
+                    saveHistory('merchant', resultArray);
+                }
             } catch (error) {
                 showNotification(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
             } finally {
@@ -493,29 +651,65 @@
             const tbody = document.querySelector('#outputTable tbody');
             tbody.innerHTML = '';
 
-            resultArray.forEach(row => {
+            resultArray.forEach((row, index) => {
                 const tr = document.createElement('tr');
+                tr.id = `row-${index}`;
                 tr.innerHTML = `
-                    <td>${row.Merchant}</td>
-                    <td class="number-cell">${row['Net Total'].toFixed(2)}</td>
-                    <td class="number-cell">${row.Rank}</td>
+                    <td class="row-content">${row.Merchant}</td>
+                    <td class="number-cell row-content">${row['Net Total'].toFixed(2)}</td>
+                    <td class="number-cell row-content">${row.Rank}</td>
                     <td>
-                        <button class="copy-btn" onclick="copyToClipboard('${row.Merchant}', ${row['Net Total'].toFixed(2)})">
+                        <button class="copy-btn" onclick="copyToClipboard('${row.Merchant}', ${row['Net Total'].toFixed(2)}, ${index})">
                             คัดลอก
                         </button>
+                        ${row.bankDetails ? `
+                        <table class="bank-details-table row-content">
+                            <tr>
+                                <th>ชื่อบัญชี</th>
+                                <td>${row.bankDetails.accountName}</td>
+                            </tr>
+                            <tr>
+                                <th>ธนาคาร</th>
+                                <td>${row.bankDetails.bankName}</td>
+                            </tr>
+                            <tr>
+                                <th>เลขบัญชี</th>
+                                <td id="accountNumber-${index}">${row.bankDetails.accountNumber}</td>
+                            </tr>
+                        </table>
+                        <button class="show-btn" id="showBtn-${index}" onclick="toggleVisibility(${index})">ยกเลิกซ่อน</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        async function copyToClipboard(merchant, amount) {
+        async function copyToClipboard(merchant, amount, index) {
             try {
-                await navigator.clipboard.writeText(`${merchant}: ${amount}`);
+                const accountNumber = document.getElementById(`accountNumber-${index}`).textContent;
+                await navigator.clipboard.writeText(accountNumber);
                 showNotification('คัดลอกข้อมูลเรียบร้อยแล้ว');
+                document.querySelectorAll(`#row-${index} .row-content`).forEach(element => {
+                    element.classList.add('hidden-row-content');
+                });
+                document.getElementById(`showBtn-${index}`).style.display = 'inline-block';
             } catch (err) {
-                showNotification('การคัดลอกไม่สำเร็จ', 'error');
+                showNotification('ไม่มีข้อมูลการโอน', 'error');
             }
+        }
+
+        function toggleVisibility(index) {
+            const rowContents = document.querySelectorAll(`#row-${index} .row-content`);
+            const showBtn = document.getElementById(`showBtn-${index}`);
+            rowContents.forEach(element => {
+                if (element.classList.contains('hidden-row-content')) {
+                    element.classList.remove('hidden-row-content');
+                    showBtn.textContent = 'ซ่อน';
+                } else {
+                    element.classList.add('hidden-row-content');
+                    showBtn.textContent = 'ยกเลิกซ่อน';
+                }
+            });
         }
 
         function exportToCSV() {
@@ -525,10 +719,9 @@
             ].map(e => e.join(",")).join("\n");
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
-            
-            link.setAttribute('href', url);
+            const link = document.createElement('a');
+            link.href = url;
             link.setAttribute('download', 'merchant_payments.csv');
             document.body.appendChild(link);
             link.click();
@@ -749,7 +942,60 @@
             updateHistorySection();
         }
 
-        document.addEventListener('DOMContentLoaded', updateHistorySection);
+        let bankDetails = JSON.parse(localStorage.getItem('bankDetails') || '{}');
+
+        function addBankDetails() {
+            const merchantName = document.getElementById('bankMerchantName').value.trim();
+            const accountName = document.getElementById('bankAccountName').value.trim();
+            const bankName = document.getElementById('bankName').value.trim();
+            const accountNumber = document.getElementById('bankAccountNumber').value.trim();
+
+            if (merchantName && accountName && bankName && accountNumber) {
+                bankDetails[merchantName] = { accountName, bankName, accountNumber };
+                localStorage.setItem('bankDetails', JSON.stringify(bankDetails));
+                updateBankDetailsList();
+            }
+        }
+
+        function editBankDetails(merchantName) {
+            const details = bankDetails[merchantName];
+            document.getElementById('bankMerchantName').value = merchantName;
+            document.getElementById('bankAccountName').value = details.accountName;
+            document.getElementById('bankName').value = details.bankName;
+            document.getElementById('bankAccountNumber').value = details.accountNumber;
+            deleteBankDetails(merchantName);
+        }
+
+        function deleteBankDetails(merchantName) {
+            delete bankDetails[merchantName];
+            localStorage.setItem('bankDetails', JSON.stringify(bankDetails));
+            updateBankDetailsList();
+        }
+
+        function updateBankDetailsList() {
+            const bankDetailsList = document.getElementById('bankDetailsList');
+            bankDetailsList.innerHTML = '';
+
+            for (const [merchantName, details] of Object.entries(bankDetails)) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${merchantName}</td>
+                    <td>${details.accountName}</td>
+                    <td>${details.bankName}</td>
+                    <td>${details.accountNumber}</td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editBankDetails('${merchantName}')">แก้ไข</button>
+                        <button class="action-btn delete-btn" onclick="deleteBankDetails('${merchantName}')">ลบ</button>
+                    </td>
+                `;
+                bankDetailsList.appendChild(tr);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateBankDetailsList();
+            updateHistorySection();
+        });
     </script>
 </body>
 </html>
