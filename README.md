@@ -1,2 +1,2 @@
-# gobear.github.io
-โปรแกรมคำนวน
+# gober.github.io
+โปรแกรมคำนวนเฉพราะทาง
