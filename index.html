@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงาน</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: #ecf0f1;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-custom {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            font-size: 2.2rem;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .tab {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            background: var(--secondary-color);
+            color: white;
+            border-radius: 5px 5px 0 0;
+            margin: 0 0.5rem;
+            transition: background 0.3s;
+        }
+
+        .tab.active {
+            background: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .file-input {
+            display: inline-flex;
+            gap: 1rem;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            border: 2px dashed var(--secondary-color);
+            transition: background-color 0.3s;
+        }
+
+        .file-input:hover {
+            background-color: #e0e0e0;
+        }
+
+        .process-btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .process-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .process-btn:hover:not(:disabled) {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: #f5f6fa;
+        }
+
+        .number-cell {
+            text-align: right;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .copy-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .copy-btn:hover {
+            background-color: #219a52;
+        }
+
+        .export-btn {
+            display: none;
+            margin: 1rem auto;
+            padding: 1rem 2rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 1rem 2rem;
+            background: var(--success-color);
+            color: white;
+            border-radius: 5px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .error-box {
+            background: var(--error-color);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .history-section {
+            margin-top: 2rem;
+        }
+
+        .history-item {
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item:hover {
+            background: #e0e0e0;
+        }
+
+        .delete-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .device-selection {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #ecf0f1;
+        }
+
+        .device-selection button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            margin: 0 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .device-selection button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        @media (max-width: 768px) {
+            .container-custom {
+                margin: 1rem;
+                padding: 1rem;
+            }
+
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 0.75rem;
+            }
+        }
+
+        .bank-details-section {
+            margin-top: 2rem;
+        }
+
+        .bank-details-form {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .bank-details-form input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .bank-details-form button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .bank-details-form button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .bank-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .bank-details-table th, .bank-details-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .bank-details-table th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .bank-details-table tr:hover {
+            background-color: #f5f6fa;
+        }
+
+        .bank-details-table .action-btn {
+            margin-left: 0.5rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .bank-details-table .edit-btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+        }
+
+        .bank-details-table .edit-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .bank-details-table .delete-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+        }
+
+        .bank-details-table .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .bank-details-table .copy-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+        }
+
+        .bank-details-table .copy-btn:hover {
+            background-color: #219a52;
+        }
+
+        .hidden-row-content {
+            display: none;
+        }
+
+        .show-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .show-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .no-data-message {
+            text-align: center;
+            color: var(--error-color);
+            font-size: 1.2rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="device-selection" id="deviceSelection">
+        <button onclick="selectDevice('mobile')">เปิดด้วยมือถือ</button>
+        <button onclick="selectDevice('pc')">เปิดด้วย PC</button>
+    </div>
+
+    <div class="container container-custom" id="mainContent" style="display: none;">
+        <h1>ระบบรายงาน</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('merchant')">คำนวนจ่ายร้านค้า</div>
+            <div class="tab" onclick="showTab('rider')">รายงานไรเดอร์</div>
+            <div class="tab" onclick="showTab('history')">ประวัติการรายงาน</div>
+            <div class="tab" onclick="showTab('bankDetails')">จัดการข้อมูลธนาคาร</div>
+        </div>
+
+        <div id="merchant" class="tab-content active">
+            <div class="upload-section">
+                <div class="loading-overlay">
+                    <div class="spinner"></div>
+                </div>
+                <div class="file-input">
+                    <input type="file" id="fileInput" accept=".csv">
+                    <button class="process-btn" onclick="processFile()" disabled>ประมวลผลไฟล์</button>
+                </div>
+            </div>
+
+            <div id="noDataMessage" class="no-data-message" style="display: none;">ไม่มีข้อมูลที่ตรงกัน</div>
+            <table id="outputTable" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ร้านค้า</th>
+                        <th class="number-cell">ยอดสุทธิ</th>
+                        <th class="number-cell">อันดับ</th>
+                        <th>ดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <button class="export-btn" onclick="exportToCSV()">ส่งออกเป็น CSV</button>
+            <div class="notification" id="notification"></div>
+        </div>
+
+        <div id="rider" class="tab-content">
+            <div class="upload-section">
+                <label class="file-input-label">
+                    📁 อัปโหลดไฟล์งาน (Tasks)
+                    <input type="file" id="taskFile" accept=".csv" hidden>
+                </label>
+                
+                <label class="file-input-label">
+                    📁 อัปโหลดไฟล์ออเดอร์ (Orders)
+                    <input type="file" id="orderFile" accept=".csv" hidden>
+                </label>
+                
+                <button id="processBtn" class="btn btn-primary" onclick="processFiles()">🚀 สร้างรายงาน</button>
+            </div>
+
+            <div class="error-box" id="errorBox"></div>
+            
+            <div class="result-section">
+                <table id="resultTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>อันดับ</th>
+                            <th>ชื่อไรเดอร์</th>
+                            <th>ยอดปรับแล้ว</th>
+                            <th>จำนวนออเดอร์</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="history" class="tab-content">
+            <div class="history-section" id="historySection">
+                <!-- History items will be appended here -->
+            </div>
+        </div>
+
+        <div id="bankDetails" class="tab-content">
+            <div class="bank-details-section">
+                <h2>จัดการข้อมูลธนาคาร</h2>
+                <div class="bank-details-form">
+                    <input type="text" id="bankMerchantName" placeholder="ชื่อร้านค้า">
+                    <input type="text" id="bankAccountName" placeholder="ชื่อบัญชี">
+                    <input type="text" id="bankName" placeholder="ธนาคาร">
+                    <input type="text" id="bankAccountNumber" placeholder="เลขบัญชี">
+                    <button onclick="addBankDetails()">เพิ่มข้อมูล</button>
+                </div>
+                <table class="bank-details-table">
+                    <thead>
+                        <tr>
+                            <th>ร้านค้า</th>
+                            <th>ชื่อบัญชี</th>
+                            <th>ธนาคาร</th>
+                            <th>เลขบัญชี</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bankDetailsList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function selectDevice(device) {
+            document.getElementById('deviceSelection').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            if (device === 'mobile') {
+                document.body.style.fontSize = '0.9rem';
+                document.querySelector('.container-custom').style.padding = '1rem';
+            } else {
+                document.body.style.fontSize = '1rem';
+                document.querySelector('.container-custom').style.padding = '2rem';
+            }
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        let resultArray = [];
+        const requiredColumns = ['Merchant', 'Sub Total', 'Commission'];
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            document.querySelector('.process-btn').disabled = !e.target.files.length;
+        });
+
+        async function fetchBankDetails(merchantName) {
+            return bankDetails[merchantName] || null;
+        }
+
+        async function processFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            try {
+                loadingOverlay.style.display = 'flex';
+                resultArray = await processCSV(file);
+                for (let row of resultArray) {
+                    const bankDetails = await fetchBankDetails(row.Merchant);
+                    if (bankDetails) {
+                        row.bankDetails = bankDetails;
+                    }
+                }
+                if (resultArray.length === 0) {
+                    document.getElementById('noDataMessage').style.display = 'block';
+                } else {
+                    document.getElementById('noDataMessage').style.display = 'none';
+                    updateTable();
+                    document.querySelector('.export-btn').style.display = 'block';
+                    showNotification('ประมวลผลข้อมูลสำเร็จ', 'success');
+                    saveHistory('merchant', resultArray);
+                }
+            } catch (error) {
+                showNotification(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        function processCSV(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const data = results.data;
+                        
+                        const missingColumns = requiredColumns.filter(col => 
+                            !results.meta.fields.includes(col)
+                        );
+                        if (missingColumns.length > 0) {
+                            return reject(new Error(`คอลัมน์ที่ขาดหาย: ${missingColumns.join(', ')}`));
+                        }
+
+                        const merchantMap = new Map();
+                        
+                        data.forEach((row, index) => {
+                            const subTotal = parseFloat(row['Sub Total']);
+                            const commission = parseFloat(row['Commission']);
+                            
+                            if (isNaN(subTotal) || isNaN(commission)) {
+                                console.warn(`แถว ${index + 1}: ข้อมูลตัวเลขไม่ถูกต้อง`);
+                                return;
+                            }
+
+                            const netTotal = subTotal - commission;
+                            const merchant = row['Merchant'].trim();
+                            
+                            if (merchantMap.has(merchant)) {
+                                merchantMap.set(merchant, merchantMap.get(merchant) + netTotal);
+                            } else {
+                                merchantMap.set(merchant, netTotal);
+                            }
+                        });
+
+                        const sortedArray = Array.from(merchantMap, ([Merchant, netTotal]) => ({
+                            Merchant,
+                            'Net Total': netTotal
+                        }))
+                        .sort((a, b) => b['Net Total'] - a['Net Total']);
+
+                        let currentRank = 1;
+                        sortedArray.forEach((row, index) => {
+                            if (index > 0 && row['Net Total'] === sortedArray[index - 1]['Net Total']) {
+                                row['Rank'] = sortedArray[index - 1]['Rank'];
+                            } else {
+                                row['Rank'] = currentRank;
+                            }
+                            currentRank++;
+                        });
+
+                        resolve(sortedArray);
+                    },
+                    error: function(error) {
+                        reject(new Error('รูปแบบไฟล์ไม่ถูกต้อง'));
+                    }
+                });
+            });
+        }
+
+        function updateTable() {
+            const tbody = document.querySelector('#outputTable tbody');
+            tbody.innerHTML = '';
+
+            resultArray.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.id = `row-${index}`;
+                tr.innerHTML = `
+                    <td class="row-content">${row.Merchant}</td>
+                    <td class="number-cell row-content">${row['Net Total'].toFixed(2)}</td>
+                    <td class="number-cell row-content">${row.Rank}</td>
+                    <td>
+                        <button class="copy-btn" onclick="copyToClipboard('${row.Merchant}', ${row['Net Total'].toFixed(2)}, ${index})">
+                            คัดลอก
+                        </button>
+                        ${row.bankDetails ? `
+                        <table class="bank-details-table row-content">
+                            <tr>
+                                <th>ชื่อบัญชี</th>
+                                <td>${row.bankDetails.accountName}</td>
+                            </tr>
+                            <tr>
+                                <th>ธนาคาร</th>
+                                <td>${row.bankDetails.bankName}</td>
+                            </tr>
+                            <tr>
+                                <th>เลขบัญชี</th>
+                                <td id="accountNumber-${index}">${row.bankDetails.accountNumber}</td>
+                            </tr>
+                        </table>
+                        <button class="show-btn" id="showBtn-${index}" onclick="toggleVisibility(${index})">ยกเลิกซ่อน</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function copyToClipboard(merchant, amount, index) {
+            try {
+                const accountNumber = document.getElementById(`accountNumber-${index}`).textContent;
+                await navigator.clipboard.writeText(accountNumber);
+                showNotification('คัดลอกข้อมูลเรียบร้อยแล้ว');
+                document.querySelectorAll(`#row-${index} .row-content`).forEach(element => {
+                    element.classList.add('hidden-row-content');
+                });
+                document.getElementById(`showBtn-${index}`).style.display = 'inline-block';
+            } catch (err) {
+                showNotification('ไม่มีข้อมูลการโอน', 'error');
+            }
+        }
+
+        function toggleVisibility(index) {
+            const rowContents = document.querySelectorAll(`#row-${index} .row-content`);
+            const showBtn = document.getElementById(`showBtn-${index}`);
+            rowContents.forEach(element => {
+                if (element.classList.contains('hidden-row-content')) {
+                    element.classList.remove('hidden-row-content');
+                    showBtn.textContent = 'ซ่อน';
+                } else {
+                    element.classList.add('hidden-row-content');
+                    showBtn.textContent = 'ยกเลิกซ่อน';
+                }
+            });
+        }
+
+        function exportToCSV() {
+            const csvContent = [
+                ['Merchant', 'Net Total', 'Rank'],
+                ...resultArray.map(row => [row.Merchant, row['Net Total'].toFixed(2), row.Rank])
+            ].map(e => e.join(",")).join("\n");
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'merchant_payments.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.backgroundColor = type === 'error' ? '#e74c3c' : '#27ae60';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        const CONFIG = {
+            requiredColumns: {
+                tasks: ['ORDER ID', 'AGENT NAME', 'TOTAL AGENT EARNINGS'],
+                orders: ['ORDER ID', 'GRAND TOTAL']
+            },
+            columnAliases: {
+                'TOTAL AGENT EARNINGS': [
+                    'totalagentearnings', 
+                    'agent_earnings', 
+                    'ค่าตอบแทน',
+                    'earnings'
+                ],
+                'GRAND TOTAL': [
+                    'grandtotal',
+                    'total',
+                    'ยอดรวมทั้งหมด'
+                ]
+            }
+        };
+
+        function normalizeHeader(header) {
+            return header
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/[^a-zA-Z0-9ก-๙]/g, ' ')
+                .trim()
+                .toUpperCase()
+                .replace(/\s+/g, ' ');
+        }
+
+        async function parseCSV(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    delimiter: ',',
+                    encoding: 'UTF-8',
+                    skipEmptyLines: true,
+                    transformHeader: (originalHeader) => {
+                        const header = normalizeHeader(originalHeader);
+                        for (const [officialName, aliases] of Object.entries(CONFIG.columnAliases)) {
+                            if (aliases.includes(header.toLowerCase())) {
+                                return officialName;
+                            }
+                        }
+                        return header;
+                    },
+                    complete: (results) => {
+                        resolve(results.data.filter(row => Object.keys(row).length > 0));
+                    },
+                    error: reject
+                });
+            });
+        }
+
+        function validateData(data, fileType) {
+            const required = CONFIG.requiredColumns[fileType];
+            const detected = Object.keys(data[0] || {});
+            
+            const missing = required.filter(col => !detected.includes(col));
+            
+            if (missing.length > 0) {
+                throw new Error(`
+                    ไฟล์ ${fileType} ขาดคอลัมน์:
+                    ${missing.join(', ')}
+                    
+                    คอลัมน์ที่ตรวจพบ:
+                    ${detected.join(', ')}
+                `);
+            }
+        }
+
+        async function processFiles() {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.style.display = 'none';
+
+            try {
+                const [tasks, orders] = await Promise.all([
+                    parseCSV(document.getElementById('taskFile').files[0]),
+                    parseCSV(document.getElementById('orderFile').files[0])
+                ]);
+
+                validateData(tasks, 'tasks');
+                validateData(orders, 'orders');
+
+                const orderMap = new Map();
+                orders.forEach(order => {
+                    const orderId = order['ORDER ID'].toString().trim().toUpperCase();
+                    orderMap.set(orderId, {
+                        grandTotal: parseFloat(order['GRAND TOTAL']) || 0
+                    });
+                });
+
+                const agentData = new Map();
+                tasks.forEach(task => {
+                    const orderId = task['ORDER ID'].toString().trim().toUpperCase();
+                    const order = orderMap.get(orderId);
+                    
+                    if (order) {
+                        const agentName = task['AGENT NAME'].toString().trim().toUpperCase();
+                        const earnings = parseFloat(task['TOTAL AGENT EARNINGS']) || 0;
+                        const adjustedTotal = order.grandTotal - earnings;
+
+                        if (!agentData.has(agentName)) {
+                            agentData.set(agentName, { total: 0, count: 0 });
+                        }
+                        
+                        agentData.get(agentName).total += adjustedTotal;
+                        agentData.get(agentName).count += 1;
+                    }
+                });
+
+                const sortedAgents = Array.from(agentData.entries())
+                    .map(([name, data]) => ({
+                        name,
+                        total: data.total,
+                        count: data.count
+                    }))
+                    .sort((a, b) => b.total - a.total);
+
+                const tbody = document.querySelector('#resultTable tbody');
+                tbody.innerHTML = '';
+
+                sortedAgents.forEach((agent, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${agent.name}</td>
+                        <td class="number-cell">${agent.total.toFixed(2)}</td>
+                        <td class="number-cell">${agent.count}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                saveHistory('rider', sortedAgents);
+            } catch (error) {
+                errorBox.textContent = error.message;
+                errorBox.style.display = 'block';
+            }
+        }
+
+        function saveHistory(type, data) {
+            const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+            history.push({
+                type,
+                data,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('reportHistory', JSON.stringify(history));
+            updateHistorySection();
+        }
+
+        function updateHistorySection() {
+            const historySection = document.getElementById('historySection');
+            historySection.innerHTML = '';
+
+            const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+            history.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `
+                    ${item.type} - ${new Date(item.timestamp).toLocaleString()}
+                    <button class="delete-btn" onclick="deleteHistoryItem(${index})">ลบ</button>
+                `;
+                div.onclick = () => viewHistoryItem(index);
+                historySection.appendChild(div);
+            });
+        }
+
+        function viewHistoryItem(index) {
+            const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+            const item = history[index];
+            if (!item) return;
+
+            if (item.type === 'merchant') {
+                resultArray = item.data;
+                updateTable();
+                showTab('merchant');
+            } else if (item.type === 'rider') {
+                const tbody = document.querySelector('#resultTable tbody');
+                tbody.innerHTML = '';
+
+                item.data.forEach((agent, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${agent.name}</td>
+                        <td class="number-cell">${agent.total.toFixed(2)}</td>
+                        <td class="number-cell">${agent.count}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                showTab('rider');
+            }
+        }
+
+        function deleteHistoryItem(index) {
+            const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+            history.splice(index, 1);
+            localStorage.setItem('reportHistory', JSON.stringify(history));
+            updateHistorySection();
+        }
+
+        let bankDetails = JSON.parse(localStorage.getItem('bankDetails') || '{}');
+
+        async function addBankDetails() {
+            const merchantName = document.getElementById('bankMerchantName').value.trim();
+            const accountName = document.getElementById('bankAccountName').value.trim();
+            const bankName = document.getElementById('bankName').value.trim();
+            const accountNumber = document.getElementById('bankAccountNumber').value.trim();
+
+            if (!merchantName || !accountName || !bankName || !accountNumber) {
+                showNotification('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/bank-details', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ merchantName, accountName, bankName, accountNumber }),
+                });
+
+                if (response.ok) {
+                    const newBankDetail = await response.json();
+                    bankDetails[newBankDetail._id] = newBankDetail;
+                    updateBankDetailsList();
+                    showNotification('เพิ่มข้อมูลสำเร็จ', 'success');
+                } else {
+                    showNotification('เกิดข้อผิดพลาดในการเพิ่มข้อมูล', 'error');
+                }
+            } catch (error) {
+                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+            }
+        }
+
+        async function editBankDetails(id) {
+            const details = bankDetails[id];
+            document.getElementById('bankMerchantName').value = details.merchantName;
+            document.getElementById('bankAccountName').value = details.accountName;
+            document.getElementById('bankName').value = details.bankName;
+            document.getElementById('bankAccountNumber').value = details.accountNumber;
+
+            deleteBankDetails(id);
+        }
+
+        async function deleteBankDetails(id) {
+            try {
+                const response = await fetch(`http://localhost:3000/bank-details/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    delete bankDetails[id];
+                    updateBankDetailsList();
+                    showNotification('ลบข้อมูลสำเร็จ', 'success');
+                } else {
+                    showNotification('เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+                }
+            } catch (error) {
+                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+            }
+        }
+
+        async function updateBankDetailsList() {
+            try {
+                const response = await fetch('http://localhost:3000/bank-details');
+                const data = await response.json();
+                bankDetails = data.reduce((acc, detail) => {
+                    acc[detail._id] = detail;
+                    return acc;
+                }, {});
+
+                const bankDetailsList = document.getElementById('bankDetailsList');
+                bankDetailsList.innerHTML = '';
+
+                for (const [id, details] of Object.entries(bankDetails)) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${details.merchantName}</td>
+                        <td>${details.accountName}</td>
+                        <td>${details.bankName}</td>
+                        <td>${details.accountNumber}</td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="editBankDetails('${id}')">แก้ไข</button>
+                            <button class="action-btn delete-btn" onclick="deleteBankDetails('${id}')">ลบ</button>
+                        </td>
+                    `;
+                    bankDetailsList.appendChild(tr);
+                }
+            } catch (error) {
+                showNotification('เกิดข้อผิดพลาดในการดึงข้อมูลจากเซิร์ฟเวอร์', 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateBankDetailsList();
+            updateHistorySection();
+        });
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.backgroundColor = type === 'error' ? '#e74c3c' : '#27ae60';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
